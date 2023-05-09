@@ -43,6 +43,7 @@
             this.EdgeDetectVerticalButton = new System.Windows.Forms.Button();
             this.TimeWarpButton = new System.Windows.Forms.Button();
             this.openImageDialog = new System.Windows.Forms.OpenFileDialog();
+            this.saveImageDialog = new System.Windows.Forms.SaveFileDialog();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.MainPictureBox)).BeginInit();
             this.SuspendLayout();
@@ -80,12 +81,14 @@
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new System.Drawing.Size(177, 22);
             this.saveButton.Text = "Save";
+            this.saveButton.Click += new System.EventHandler(this.saveButton_Click);
             // 
             // compressButton
             // 
             this.compressButton.Name = "compressButton";
             this.compressButton.Size = new System.Drawing.Size(177, 22);
             this.compressButton.Text = "Compress and Save";
+            this.compressButton.Click += new System.EventHandler(this.compressButton_Click);
             // 
             // editToolStripMenuItem
             // 
@@ -173,8 +176,13 @@
             // 
             this.openImageDialog.DefaultExt = "jpg";
             this.openImageDialog.FileName = "openImageDialog";
-            this.openImageDialog.Filter = "\"Image files (*.bmp, *.jpg, *.jpeg, *.png)|*.bmp;*.jpg;*.jpeg;*.png|RIF files (*." +
-    "rif)|*.rif\"";
+            this.openImageDialog.Filter = "Image files (*.bmp, *.jpg, *.jpeg, *.png, *rif)|*.bmp;*.jpg;*.jpeg;*.png;*rif;";
+            // 
+            // saveImageDialog
+            // 
+            this.saveImageDialog.FileName = "Image";
+            this.saveImageDialog.Filter = "RIF Image|*.rif";
+            this.saveImageDialog.Title = "Save Rale Image";
             // 
             // Form1
             // 
@@ -189,6 +197,7 @@
             this.Controls.Add(this.menuStrip1);
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = " ";
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
@@ -215,5 +224,6 @@
         private ToolStripMenuItem undoToolStripMenuItem;
         private ToolStripMenuItem redoToolStripMenuItem;
         private OpenFileDialog openImageDialog;
+        private SaveFileDialog saveImageDialog;
     }
 }

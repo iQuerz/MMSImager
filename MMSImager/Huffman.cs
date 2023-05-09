@@ -9,82 +9,147 @@ namespace MMSImager
 {
     internal class Huffman
     {
-        private class Node
+        public static Dictionary<byte, BitArray> GetHuffmanDict(List<byte> bytes)
         {
-            public byte? Symbol { get; set; }
-            public int Frequency { get; set; }
-            public Node Left { get; set; }
-            public Node Right { get; set; }
-        }
-
-
-        public static Dictionary<byte, BitArray> CreateHuffmanDictionary(byte[] data)
-        {
-            // Count the frequency of each symbol in the data
-            Dictionary<byte, int> frequencyTable = new Dictionary<byte, int>();
-            foreach (byte b in data)
+            var frequency = new Dictionary<byte, int>();
+            foreach (var b in bytes)
             {
-                if (!frequencyTable.ContainsKey(b))
+                if (!frequency.ContainsKey(b))
                 {
-                    frequencyTable[b] = 0;
+                    frequency[b] = 0;
                 }
-
-                frequencyTable[b]++;
+                frequency[b]++;
             }
 
-            // Create a list of leaf nodes for each symbol
-            List<Node> nodes = frequencyTable.Select(pair => new Node
+            var heap = new PriorityQueue<HuffmanNode, HuffmanNodeComparer>();
+            foreach (var pair in frequency)
             {
-                Symbol = pair.Key,
-                Frequency = pair.Value
-            }).ToList();
-
-            // Build the Huffman tree by merging nodes with the lowest frequency
-            while (nodes.Count > 1)
-            {
-                // Sort the nodes by frequency
-                nodes.Sort((a, b) => a.Frequency.CompareTo(b.Frequency));
-
-                // Merge the two nodes with the lowest frequency
-                Node left = nodes[0];
-                Node right = nodes[1];
-                Node parent = new Node
-                {
-                    Frequency = left.Frequency + right.Frequency,
-                    Left = left,
-                    Right = right
-                };
-
-                // Remove the merged nodes and add the parent node
-                nodes.RemoveAt(0);
-                nodes.RemoveAt(0);
-                nodes.Add(parent);
+                heap.Enqueue(new HuffmanNode() { Byte = pair.Key, Frequency = pair.Value }, new HuffmanNodeComparer());
             }
 
-            // Traverse the Huffman tree to generate codes for each symbol
-            Dictionary<byte, BitArray> huffmanDict = new Dictionary<byte, BitArray>();
-            TraverseTree(nodes[0], new BitArray(0), huffmanDict);
+            while (heap.Count > 1)
+            {
+                var left = heap.Dequeue();
+                var right = heap.Dequeue();
+                heap.Enqueue(new HuffmanNode() { Left = left, Right = right, Frequency = left.Frequency + right.Frequency }, new HuffmanNodeComparer());
+            }
 
-            return huffmanDict;
+            var root = heap.Dequeue();
+            var dictionary = new Dictionary<byte, BitArray>();
+            Traverse(root, new BitArray(0), dictionary);
+
+            return dictionary;
         }
 
-        private static void TraverseTree(Node node, BitArray code, Dictionary<byte, BitArray> huffmanDict)
+        private static void Traverse(HuffmanNode node, BitArray bits, Dictionary<byte, BitArray> dictionary)
         {
-            if (node.Symbol != null)
+            if (node.Left == null && node.Right == null)
             {
-                huffmanDict[(byte)node.Symbol] = new BitArray(code);
+                dictionary[node.Byte] = bits;
+                return;
             }
-            else
-            {
-                BitArray leftCode = new BitArray(code);
-                leftCode.Length++;
-                leftCode[leftCode.Length - 1] = false;
-                TraverseTree(node.Left, leftCode, huffmanDict);
 
-                BitArray rightCode = new BitArray(code);
-                rightCode.Length++;
-                rightCode[rightCode.Length - 1] = true;
-                TraverseTree(node.Right, rightCode, huffmanDict);
+            if (node.Left != null)
+            {
+                var leftBits = new BitArray(bits);
+                leftBits.Length++;
+                leftBits[leftBits.Length - 1] = false;
+                Traverse(node.Left, leftBits, dictionary);
+            }
+
+            if (node.Right != null)
+            {
+                var rightBits = new BitArray(bits);
+                rightBits.Length++;
+                rightBits[rightBits.Length - 1] = true;
+                Traverse(node.Right, rightBits, dictionary);
+            }
+        }
+
+        public static byte[] EncodeImage(List<byte> bytes, Dictionary<byte, BitArray> dictionary)
+        {
+            var bitList = new List<bool>();
+            foreach (var b in bytes)
+            {
+                var bits = dictionary[b];
+                bitList.AddRange(bits.Cast<bool>());
+            }
+
+            var bitArray = new BitArray(bitList.ToArray());
+            int byteCount = (bitArray.Length + 7) / 8;
+            byte[] byteArray = new byte[byteCount];
+            bitArray.CopyTo(byteArray, 0);
+            return byteArray;
+        }
+        public static List<byte> DecodeImage(byte[] byteArray, Dictionary<byte, BitArray> dictionary)
+        {
+            var bitArray = new BitArray(byteArray);
+            var bytes = new List<byte>();
+            var bits = new List<bool>();
+            for (int i = 0; i < bitArray.Length; i++)
+            {
+                bits.Add(bitArray[i]);
+                if (dictionary.ContainsValue(new BitArray(bits.ToArray())))
+                {
+                    bytes.Add(dictionary.FirstOrDefault(x => x.Value.Cast<bool>().SequenceEqual(bits)).Key);
+                    bits.Clear();
+                }
+            }
+            return bytes;
+        }
+
+        public static byte[] EncodeDictionary(Dictionary<byte, BitArray> dictionary)
+        {
+            using var stream = new MemoryStream();
+            using var writer = new BinaryWriter(stream);
+
+            writer.Write(dictionary.Count);
+            foreach (var pair in dictionary)
+            {
+                writer.Write(pair.Key);
+
+                int byteCount = (pair.Value.Length + 7) / 8;
+                byte[] bytes = new byte[byteCount];
+                pair.Value.CopyTo(bytes, 0);
+
+                writer.Write(byteCount);
+                writer.Write(bytes);
+            }
+
+            return stream.ToArray();
+        }
+        public static Dictionary<byte, BitArray> DecodeDictionary(byte[] bytes)
+        {
+            var dictionary = new Dictionary<byte, BitArray>();
+            var stream = new MemoryStream(bytes);
+            var reader = new BinaryReader(stream);
+
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                var key = reader.ReadByte();
+                var length = reader.ReadInt32();
+                var bitArrayBytes = reader.ReadBytes(length);
+                var bitArray = new BitArray(bitArrayBytes);
+                dictionary.Add(key, bitArray);
+            }
+
+            return dictionary;
+        }
+
+        private class HuffmanNode
+        {
+            public byte Byte { get; set; }
+            public int Frequency { get; set; }
+            public HuffmanNode Left { get; set; }
+            public HuffmanNode Right { get; set; }
+        }
+
+        private class HuffmanNodeComparer : IComparer<HuffmanNode>
+        {
+            public int Compare(HuffmanNode x, HuffmanNode y)
+            {
+                return x.Frequency - y.Frequency;
             }
         }
     }

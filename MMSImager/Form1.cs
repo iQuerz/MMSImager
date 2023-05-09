@@ -65,5 +65,30 @@ namespace MMSImager
         }
         #endregion
 
+        private void compressButton_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void saveButton_Click(object sender, EventArgs e)
+        {
+            if(_engine.ActiveBitmap == null)
+            {
+                MessageBox.Show("There's no picture loaded.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            bool downsample = DialogResult.Yes == MessageBox.Show("Downsample the picture?", "Downsampling", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            bool compress = DialogResult.Yes == MessageBox.Show("Compress the picture?", "Compression", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            var result = saveImageDialog.ShowDialog();
+
+            if (result == DialogResult.OK)
+            {
+                _engine.Save(saveImageDialog.FileName, compress, downsample);
+                MessageBox.Show("Image saved.");
+            }
+        }
     }
 }
