@@ -21,17 +21,17 @@ namespace MMSImager
                 frequency[b]++;
             }
 
-            var heap = new PriorityQueue<HuffmanNode, HuffmanNodeComparer>();
+            var heap = new PriorityQueue<HuffmanNode, int>();
             foreach (var pair in frequency)
             {
-                heap.Enqueue(new HuffmanNode() { Byte = pair.Key, Frequency = pair.Value }, new HuffmanNodeComparer());
+                heap.Enqueue(new HuffmanNode() { Byte = pair.Key, Frequency = pair.Value }, pair.Value);
             }
 
             while (heap.Count > 1)
             {
                 var left = heap.Dequeue();
                 var right = heap.Dequeue();
-                heap.Enqueue(new HuffmanNode() { Left = left, Right = right, Frequency = left.Frequency + right.Frequency }, new HuffmanNodeComparer());
+                heap.Enqueue(new HuffmanNode() { Left = left, Right = right, Frequency = left.Frequency + right.Frequency }, left.Frequency + right.Frequency);
             }
 
             var root = heap.Dequeue();
@@ -66,36 +66,42 @@ namespace MMSImager
             }
         }
 
-        public static byte[] EncodeImage(List<byte> bytes, Dictionary<byte, BitArray> dictionary)
+        public static byte[] EncodeImage(List<byte> imageBytes, Dictionary<byte, BitArray> dictionary)
         {
-            var bitList = new List<bool>();
-            foreach (var b in bytes)
+            var encodedBitlist = new List<bool>();
+            foreach (var imageByte in imageBytes)
             {
-                var bits = dictionary[b];
-                bitList.AddRange(bits.Cast<bool>());
+                var encodedBits = dictionary[imageByte];
+                encodedBitlist.AddRange(encodedBits.Cast<bool>());
             }
 
-            var bitArray = new BitArray(bitList.ToArray());
-            int byteCount = (bitArray.Length + 7) / 8;
+            var encodedBitArray = new BitArray(encodedBitlist.ToArray());
+            int byteCount = (encodedBitArray.Length + 7) / 8;
             byte[] byteArray = new byte[byteCount];
-            bitArray.CopyTo(byteArray, 0);
+            encodedBitArray.CopyTo(byteArray, 0);
             return byteArray;
         }
-        public static List<byte> DecodeImage(byte[] byteArray, Dictionary<byte, BitArray> dictionary)
+
+        public static List<byte> DecodeImage(byte[] encodedBytes, Dictionary<byte, BitArray> dictionary)
         {
-            var bitArray = new BitArray(byteArray);
-            var bytes = new List<byte>();
-            var bits = new List<bool>();
-            for (int i = 0; i < bitArray.Length; i++)
+            var encodedBitArray = new BitArray(encodedBytes);
+            var decodedBytes = new List<byte>();
+            var bitsBuffer = new List<bool>();
+
+            for (int i = 0; i < encodedBitArray.Length; i++)
             {
-                bits.Add(bitArray[i]);
-                if (dictionary.ContainsValue(new BitArray(bits.ToArray())))
+                bitsBuffer.Add(encodedBitArray[i]);
+                var bitArrayToCompare = new BitArray(bitsBuffer.ToArray());
+
+                var decodedPair = dictionary.FirstOrDefault(x => SameBits(x.Value, bitArrayToCompare));
+
+                if (decodedPair.Value is not null)
                 {
-                    bytes.Add(dictionary.FirstOrDefault(x => x.Value.Cast<bool>().SequenceEqual(bits)).Key);
-                    bits.Clear();
+                    decodedBytes.Add(decodedPair.Key);
+                    bitsBuffer.Clear();
                 }
             }
-            return bytes;
+            return decodedBytes;
         }
 
         public static byte[] EncodeDictionary(Dictionary<byte, BitArray> dictionary)
@@ -112,7 +118,7 @@ namespace MMSImager
                 byte[] bytes = new byte[byteCount];
                 pair.Value.CopyTo(bytes, 0);
 
-                writer.Write(byteCount);
+                writer.Write(pair.Value.Length);
                 writer.Write(bytes);
             }
 
@@ -129,8 +135,11 @@ namespace MMSImager
             {
                 var key = reader.ReadByte();
                 var length = reader.ReadInt32();
-                var bitArrayBytes = reader.ReadBytes(length);
-                var bitArray = new BitArray(bitArrayBytes);
+                var bitArrayBytes = reader.ReadBytes((length + 7) / 8);
+                var tempBitArray = new BitArray(bitArrayBytes);
+                var bitArray = new BitArray(length);
+                for (int j = 0; j < length; j++)
+                    bitArray[j] = tempBitArray[j];
                 dictionary.Add(key, bitArray);
             }
 
@@ -141,16 +150,27 @@ namespace MMSImager
         {
             public byte Byte { get; set; }
             public int Frequency { get; set; }
-            public HuffmanNode Left { get; set; }
-            public HuffmanNode Right { get; set; }
+            public HuffmanNode? Left { get; set; }
+            public HuffmanNode? Right { get; set; }
         }
 
-        private class HuffmanNodeComparer : IComparer<HuffmanNode>
+        private static bool SameBits(BitArray first, BitArray second)
         {
-            public int Compare(HuffmanNode x, HuffmanNode y)
-            {
-                return x.Frequency - y.Frequency;
-            }
+            if (first.Length != second.Length)
+                return false;
+
+            // Convert the arrays to int[]s
+            int[] firstInts = new int[(int)Math.Ceiling((decimal)first.Count / 32)];
+            first.CopyTo(firstInts, 0);
+            int[] secondInts = new int[(int)Math.Ceiling((decimal)second.Count / 32)];
+            second.CopyTo(secondInts, 0);
+
+            // Look for differences
+            bool areDifferent = false;
+            for (int i = 0; i < firstInts.Length && !areDifferent; i++)
+                areDifferent = firstInts[i] != secondInts[i];
+
+            return !areDifferent;
         }
     }
 }

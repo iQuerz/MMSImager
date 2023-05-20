@@ -1,4 +1,3 @@
-
 namespace MMSImager
 {
     public partial class Form1 : Form
@@ -38,15 +37,38 @@ namespace MMSImager
         }
         #endregion
 
+        #region File menu
+
         private void openButton_Click(object sender, EventArgs e)
         {
             var result = openImageDialog.ShowDialog();
 
             if (result == DialogResult.OK)
-            { 
+            {
                 _engine.LoadImage(openImageDialog.FileName);
             }
         }
+        private void saveButton_Click(object sender, EventArgs e)
+        {
+            if (_engine.ActiveBitmap == null)
+            {
+                MessageBox.Show("There's no picture loaded.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            bool downsample = DialogResult.Yes == MessageBox.Show("Downsample the picture?", "Downsampling", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            bool compress = DialogResult.Yes == MessageBox.Show("Compress the picture?", "Compression", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            var result = saveImageDialog.ShowDialog();
+
+            if (result == DialogResult.OK)
+            {
+                _engine.SaveImage(saveImageDialog.FileName, compress, downsample);
+                MessageBox.Show("Image saved.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        #endregion
 
         #region Edit menu
         private void undoToolStripMenuItem_Click(object sender, EventArgs e)
@@ -65,30 +87,5 @@ namespace MMSImager
         }
         #endregion
 
-        private void compressButton_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void saveButton_Click(object sender, EventArgs e)
-        {
-            if(_engine.ActiveBitmap == null)
-            {
-                MessageBox.Show("There's no picture loaded.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            bool downsample = DialogResult.Yes == MessageBox.Show("Downsample the picture?", "Downsampling", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-            bool compress = DialogResult.Yes == MessageBox.Show("Compress the picture?", "Compression", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-            var result = saveImageDialog.ShowDialog();
-
-            if (result == DialogResult.OK)
-            {
-                _engine.Save(saveImageDialog.FileName, compress, downsample);
-                MessageBox.Show("Image saved.");
-            }
-        }
     }
 }

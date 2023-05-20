@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace MMSImager
 {
@@ -63,6 +64,12 @@ namespace MMSImager
         #endregion
 
         #region Filesystem
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="filepath"></param>
+        /// <returns></returns>
         public bool LoadImage(string filepath)
         {
             if(!filepath.EndsWith(".rif", StringComparison.OrdinalIgnoreCase))
@@ -83,28 +90,39 @@ namespace MMSImager
                 var imageBytes = reader.ReadBytes((int)(reader.BaseStream.Length - reader.BaseStream.Position));
 
                 if(dictLength != 0) //compressed
-                {
-                    
-                }
-                else //uncompressed
-                {
-                    Bitmap bmp = ConvertFromYUV(height, width, downsampled, imageBytes);
-                    Add(bmp);
-                }
+                    imageBytes = Uncompress(dictLength, imageBytes).ToArray();
+
+                Bitmap bmp = ConvertFromYUV(height, width, downsampled, imageBytes);
+                Add(bmp);
             }
 
             onImageChanged?.Invoke(this, EventArgs.Empty);
             return false;
         }
 
-        public void Save(string filepath, bool compress, bool downsample)
+
+        /// <summary>
+        /// Saves the image to the filesystem.
+        /// </summary>
+        /// <param name="filepath">Full path to the file</param>
+        /// <param name="compress"></param>
+        /// <param name="downsample"></param>
+        public void SaveImage(string filepath, bool compress, bool downsample)
         {
             var bitmap = ActiveBitmap;
 
             List<byte> bytes = new();
 
             bytes.AddRange(ConvertToYUV(bitmap, downsample));
-            bytes.AddRange(Compress(bytes, compress));
+            if (compress)
+            {
+                bytes = Compress(bytes);
+            }
+            else
+            {
+                byte[] dictLength = BitConverter.GetBytes(0);
+                bytes.InsertRange(0, dictLength);
+            }
 
             bytes.InsertRange(0, BitConverter.GetBytes(downsample));
             bytes.InsertRange(0, BitConverter.GetBytes(bitmap.Width));
@@ -138,6 +156,13 @@ namespace MMSImager
         #endregion
 
         #region Logic
+
+        /// <summary>
+        /// Converts a Bitmap object to a list of bytes, represented in YUV color space.
+        /// </summary>
+        /// <param name="bitmap">Bitmap of the image</param>
+        /// <param name="downsample"></param>
+        /// <returns>List of bytes, with first byte indicating if the image is downsampled or not.</returns>
         private byte[] ConvertToYUV(Bitmap bitmap, bool downsample)
         {
             int bytesLength = bitmap.Width * bitmap.Height;
@@ -157,15 +182,12 @@ namespace MMSImager
                     int G = pixel.G;
                     int B = pixel.B;
 
-                    double y = 0.299*R + 0.587*G + 0.114*B;
-                    bytes[y_index++] = Convert.ToByte((int)y);
+                    bytes[y_index++] = getY(R, G, B);
 
                     if (!downsample)
                     {
-                        double u = -0.14713*R - 0.28886*G + 0.436*B + 128;
-                        bytes[u_index++] = Convert.ToByte((int)u);
-                        double v = 0.615*R - 0.51498*G - 0.10001*B + 128;
-                        bytes[v_index++] = Convert.ToByte((int)v);
+                        bytes[u_index++] = getU(R, G, B);
+                        bytes[v_index++] = getV(R, G, B);
                         continue;
                     }
 
@@ -173,20 +195,16 @@ namespace MMSImager
                     {
                         if (j / 2 % 2 == 0)
                         {
-                            double u = -0.14713 * R - 0.28886 * G + 0.436 * B + 128;
-                            bytes[u_index++] = Convert.ToByte((int)u);
-                            double v = 0.615 * R - 0.51498 * G - 0.10001 * B + 128;
-                            bytes[v_index++] = Convert.ToByte((int)v);
+                            bytes[u_index++] = getU(R, G, B);
+                            bytes[v_index++] = getV(R, G, B);
                         }
                     }
                     else
                     {
                         if (j / 2 % 2 == 1)
                         {
-                            double u = -0.14713 * R - 0.28886 * G + 0.436 * B + 128;
-                            bytes[u_index++] = Convert.ToByte((int)u);
-                            double v = 0.615 * R - 0.51498 * G - 0.10001 * B + 128;
-                            bytes[v_index++] = Convert.ToByte((int)v);
+                            bytes[u_index++] = getU(R, G, B);
+                            bytes[v_index++] = getV(R, G, B);
                         }
                     }
                 }
@@ -194,15 +212,15 @@ namespace MMSImager
 
             return bytes;
         }
-        private List<byte> Compress(List<byte> bytes, bool compress)
-        {
-            if (!compress)
-            {
-                byte[] dictLength = BitConverter.GetBytes(0);
-                bytes.InsertRange(0, dictLength);
-                return bytes;
-            }
 
+        /// <summary>
+        /// Compresses a list of bytes using the Huffman algorithm
+        /// </summary>
+        /// <param name="bytes">List of bytes to compress.</param>
+        /// <param name="compress"></param>
+        /// <returns>List of bytes, with first 4 bytes storing dictionary length in int32, then dictionary, and finally the compressed bytes.</returns>
+        private List<byte> Compress(List<byte> bytes)
+        {
             var dict = Huffman.GetHuffmanDict(bytes);
             byte[] dictBytes = Huffman.EncodeDictionary(dict);
             byte[] imageBytes = Huffman.EncodeImage(bytes, dict);
@@ -211,13 +229,34 @@ namespace MMSImager
             resultList.AddRange(BitConverter.GetBytes(dictBytes.Length));
             resultList.AddRange(dictBytes);
             resultList.AddRange(imageBytes);
-            return bytes;
+            return resultList;
         }
-        private List<byte> Uncompress(byte[] bytes, Dictionary<byte, BitArray> dict)
+
+        /// <summary>
+        /// Undoes the Huffman compression.
+        /// </summary>
+        /// <param name="dictLen">Dictionary length. First <paramref name="dictLen"/> bytes are the dictionary bytes.</param>
+        /// <param name="bytes"></param>
+        /// <returns>List of bytes, the way they were before compression.</returns>
+        private List<byte> Uncompress(int dictLen, byte[] bytes)
         {
+            var dictBytes = new byte[dictLen];
+            Array.Copy(bytes, 0, dictBytes, 0, dictLen);
+            var dictionary = Huffman.DecodeDictionary(dictBytes);
 
+            var imageBytes = new byte[bytes.Length - dictLen];
+            Array.Copy(bytes, dictLen, imageBytes, 0, imageBytes.Length); //dictLen == index pocetka image bytes
+            return Huffman.DecodeImage(imageBytes, dictionary);
         }
 
+        /// <summary>
+        /// Reads image yuv bytes and creates a bitmap.
+        /// </summary>
+        /// <param name="height">Image height</param>
+        /// <param name="width">Image width</param>
+        /// <param name="downsampled"></param>
+        /// <param name="yuvBytes">Image bytes</param>
+        /// <returns>Bitmap representing the converted image.</returns>
         private Bitmap ConvertFromYUV(int height, int width, bool downsampled, byte[] yuvBytes)
         {
             Bitmap bitmap = new Bitmap(width, height);
@@ -266,9 +305,18 @@ namespace MMSImager
                     {
                         if (j / 2 % 2 == 0)
                         {
-                            u = yuvBytes[u_start + (index + 2) / 2 + ((index + 2) % 4 == 0 ? 0 : 1)];
-                            v = yuvBytes[v_start + (index + 2) / 2 + ((index + 2) % 4 == 0 ? 0 : 1)];
-                            //kopiram iz sledeceg
+                            var next_u_index = (index + 2) / 2 + ((index + 2) % 4 == 0 ? 0 : 1);
+                            if (next_u_index >= uv_length)
+                                u = yuvBytes[u_start + (index - 2) / 2 + ((index - 2) % 4 == 0 ? 0 : 1)];
+                            else
+                                u = yuvBytes[u_start + next_u_index];
+
+                            var next_v_index = (index + 2) / 2 + ((index + 2) % 4 == 0 ? 0 : 1);
+                            if (next_v_index >= uv_length)
+                                v = yuvBytes[v_start + (index - 2) / 2 + ((index - 2) % 4 == 0 ? 0 : 1)];
+                            else
+                                v = yuvBytes[v_start + next_v_index];
+                            //kopiram iz sledeceg (gotta keep away from the index out of range exception)
                         }
                         else
                         {
@@ -286,15 +334,63 @@ namespace MMSImager
                 double g = yd - 0.3455 * ud - (0.7169 * vd);
                 double b = yd + 1.7790 * ud;
 
-                r = Math.Max(0, Math.Min(255, r));
-                g = Math.Max(0, Math.Min(255, g));
-                b = Math.Max(0, Math.Min(255, b));
+                r = reduce(r);
+                g = reduce(g);
+                b = reduce(b);
 
                 bitmap.SetPixel(j, i, Color.FromArgb((int)r, (int)g, (int)b));
             }
 
             return bitmap;
         }
+
+        #endregion
+
+        #region Helpers
+        /// <summary>
+        /// Gets the Y value of a given RGB pixel
+        /// </summary>
+        /// <param name="R">Red pixel component</param>
+        /// <param name="G">Green pixel component</param>
+        /// <param name="B">Blue pixel component</param>
+        /// <returns>Y value of the RGB pixel</returns>
+        private byte getY(int R, int G, int B)
+        {
+            double y = 0.299 * R + 0.587 * G + 0.114 * B;
+            return Convert.ToByte((int)reduce(y));
+        }
+
+        /// <summary>
+        /// Gets the U value of a given RGB pixel
+        /// </summary>
+        /// <param name="R">Red pixel component</param>
+        /// <param name="G">Green pixel component</param>
+        /// <param name="B">Blue pixel component</param>
+        /// <returns>U value of the RGB pixel</returns>
+        private byte getU(int R, int G, int B)
+        {
+            double u = -0.14713 * R - 0.28886 * G + 0.436 * B + 128;
+            return Convert.ToByte((int)reduce(u));
+        }
+
+        /// <summary>
+        /// Gets the V value of a given RGB pixel
+        /// </summary>
+        /// <param name="R">Red pixel component</param>
+        /// <param name="G">Green pixel component</param>
+        /// <param name="B">Blue pixel component</param>
+        /// <returns>V value of the RGB pixel</returns>
+        private byte getV(int R, int G, int B)
+        {
+            double v = 0.615 * R - 0.51498 * G - 0.10001 * B + 128;
+            return Convert.ToByte((int)reduce(v));
+        }
+
+        /// <summary>
+        /// Reduces a double value between 0 and 255
+        /// </summary>
+        private double reduce(double value) => 
+            value > 255 ? 255 : value < 0 ? 0 : value;
         #endregion
     }
 }
