@@ -18,7 +18,8 @@ namespace MMSImager
 
         private void GammaButton_Click(object sender, EventArgs e)
         {
-            _engine.Gamma();
+            var gamma = (double)gammaBar.Value / 10; //50/
+            _engine.Gamma(gamma);
         }
 
         private void SmoothButton_Click(object sender, EventArgs e)

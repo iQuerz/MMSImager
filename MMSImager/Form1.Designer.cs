@@ -43,8 +43,10 @@
             this.TimeWarpButton = new System.Windows.Forms.Button();
             this.openImageDialog = new System.Windows.Forms.OpenFileDialog();
             this.saveImageDialog = new System.Windows.Forms.SaveFileDialog();
+            this.gammaBar = new System.Windows.Forms.TrackBar();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.MainPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.gammaBar)).BeginInit();
             this.SuspendLayout();
             // 
             // menuStrip1
@@ -70,14 +72,14 @@
             // openButton
             // 
             this.openButton.Name = "openButton";
-            this.openButton.Size = new System.Drawing.Size(180, 22);
+            this.openButton.Size = new System.Drawing.Size(103, 22);
             this.openButton.Text = "Open";
             this.openButton.Click += new System.EventHandler(this.openButton_Click);
             // 
             // saveButton
             // 
             this.saveButton.Name = "saveButton";
-            this.saveButton.Size = new System.Drawing.Size(180, 22);
+            this.saveButton.Size = new System.Drawing.Size(103, 22);
             this.saveButton.Text = "Save";
             this.saveButton.Click += new System.EventHandler(this.saveButton_Click);
             // 
@@ -94,21 +96,21 @@
             // resetButton
             // 
             this.resetButton.Name = "resetButton";
-            this.resetButton.Size = new System.Drawing.Size(180, 22);
+            this.resetButton.Size = new System.Drawing.Size(103, 22);
             this.resetButton.Text = "Reset";
             this.resetButton.Click += new System.EventHandler(this.resetButton_Click);
             // 
             // undoToolStripMenuItem
             // 
             this.undoToolStripMenuItem.Name = "undoToolStripMenuItem";
-            this.undoToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.undoToolStripMenuItem.Size = new System.Drawing.Size(103, 22);
             this.undoToolStripMenuItem.Text = "Undo";
             this.undoToolStripMenuItem.Click += new System.EventHandler(this.undoToolStripMenuItem_Click);
             // 
             // redoToolStripMenuItem
             // 
             this.redoToolStripMenuItem.Name = "redoToolStripMenuItem";
-            this.redoToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.redoToolStripMenuItem.Size = new System.Drawing.Size(103, 22);
             this.redoToolStripMenuItem.Text = "Redo";
             this.redoToolStripMenuItem.Click += new System.EventHandler(this.redoToolStripMenuItem_Click);
             // 
@@ -125,7 +127,7 @@
             // 
             // GammaButton
             // 
-            this.GammaButton.Location = new System.Drawing.Point(660, 79);
+            this.GammaButton.Location = new System.Drawing.Point(660, 42);
             this.GammaButton.Name = "GammaButton";
             this.GammaButton.Size = new System.Drawing.Size(204, 23);
             this.GammaButton.TabIndex = 2;
@@ -135,7 +137,7 @@
             // 
             // SmoothButton
             // 
-            this.SmoothButton.Location = new System.Drawing.Point(660, 108);
+            this.SmoothButton.Location = new System.Drawing.Point(660, 147);
             this.SmoothButton.Name = "SmoothButton";
             this.SmoothButton.Size = new System.Drawing.Size(204, 23);
             this.SmoothButton.TabIndex = 3;
@@ -145,7 +147,7 @@
             // 
             // EdgeDetectVerticalButton
             // 
-            this.EdgeDetectVerticalButton.Location = new System.Drawing.Point(660, 137);
+            this.EdgeDetectVerticalButton.Location = new System.Drawing.Point(660, 176);
             this.EdgeDetectVerticalButton.Name = "EdgeDetectVerticalButton";
             this.EdgeDetectVerticalButton.Size = new System.Drawing.Size(204, 23);
             this.EdgeDetectVerticalButton.TabIndex = 4;
@@ -155,7 +157,7 @@
             // 
             // TimeWarpButton
             // 
-            this.TimeWarpButton.Location = new System.Drawing.Point(660, 166);
+            this.TimeWarpButton.Location = new System.Drawing.Point(660, 205);
             this.TimeWarpButton.Name = "TimeWarpButton";
             this.TimeWarpButton.Size = new System.Drawing.Size(204, 23);
             this.TimeWarpButton.TabIndex = 5;
@@ -175,11 +177,22 @@
             this.saveImageDialog.Filter = "RIF Image|*.rif";
             this.saveImageDialog.Title = "SaveImage Rale Image";
             // 
+            // gammaBar
+            // 
+            this.gammaBar.Location = new System.Drawing.Point(660, 71);
+            this.gammaBar.Maximum = 50;
+            this.gammaBar.Minimum = 1;
+            this.gammaBar.Name = "gammaBar";
+            this.gammaBar.Size = new System.Drawing.Size(204, 45);
+            this.gammaBar.TabIndex = 6;
+            this.gammaBar.Value = 24;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(876, 681);
+            this.Controls.Add(this.gammaBar);
             this.Controls.Add(this.TimeWarpButton);
             this.Controls.Add(this.EdgeDetectVerticalButton);
             this.Controls.Add(this.SmoothButton);
@@ -193,6 +206,7 @@
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.MainPictureBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.gammaBar)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -215,5 +229,6 @@
         private ToolStripMenuItem redoToolStripMenuItem;
         private OpenFileDialog openImageDialog;
         private SaveFileDialog saveImageDialog;
+        private TrackBar gammaBar;
     }
 }

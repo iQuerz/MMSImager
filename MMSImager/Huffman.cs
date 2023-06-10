@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ namespace MMSImager
 {
     internal class Huffman
     {
+        #region Generation
         public static Dictionary<byte, BitArray> GetHuffmanDict(List<byte> bytes)
         {
             var frequency = new Dictionary<byte, int>();
@@ -66,6 +68,17 @@ namespace MMSImager
             }
         }
 
+        private class HuffmanNode
+        {
+            public byte Byte { get; set; }
+            public int Frequency { get; set; }
+            public HuffmanNode? Left { get; set; }
+            public HuffmanNode? Right { get; set; }
+        }
+
+        #endregion
+
+        #region Encoding Image
         public static byte[] EncodeImage(List<byte> imageBytes, Dictionary<byte, BitArray> dictionary)
         {
             var encodedBitlist = new List<bool>();
@@ -84,9 +97,14 @@ namespace MMSImager
 
         public static List<byte> DecodeImage(byte[] encodedBytes, Dictionary<byte, BitArray> dictionary)
         {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
             var encodedBitArray = new BitArray(encodedBytes);
             var decodedBytes = new List<byte>();
             var bitsBuffer = new List<bool>();
+
+            Dictionary<RaleBitArray, byte> efficientDict = dictionary.ToDictionary(pair => new RaleBitArray(pair.Value), pair => pair.Key);
 
             for (int i = 0; i < encodedBitArray.Length; i++)
             {
@@ -94,16 +112,20 @@ namespace MMSImager
                 var bitArrayToCompare = new BitArray(bitsBuffer.ToArray());
 
                 var decodedPair = dictionary.FirstOrDefault(x => SameBits(x.Value, bitArrayToCompare));
-
                 if (decodedPair.Value is not null)
                 {
                     decodedBytes.Add(decodedPair.Key);
                     bitsBuffer.Clear();
                 }
             }
+
+            stopwatch.Stop();
             return decodedBytes;
         }
 
+        #endregion
+
+        #region Encoding Dictionary
         public static byte[] EncodeDictionary(Dictionary<byte, BitArray> dictionary)
         {
             using var stream = new MemoryStream();
@@ -145,15 +167,9 @@ namespace MMSImager
 
             return dictionary;
         }
+        #endregion
 
-        private class HuffmanNode
-        {
-            public byte Byte { get; set; }
-            public int Frequency { get; set; }
-            public HuffmanNode? Left { get; set; }
-            public HuffmanNode? Right { get; set; }
-        }
-
+        #region Helpers
         private static bool SameBits(BitArray first, BitArray second)
         {
             if (first.Length != second.Length)
@@ -172,5 +188,6 @@ namespace MMSImager
 
             return !areDifferent;
         }
+        #endregion
     }
 }
